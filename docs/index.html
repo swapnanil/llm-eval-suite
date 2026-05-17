@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Eval Suite — llm-tools by Swapnanil Saha</title>
+  <meta name="description" content="Stop comparing LLM outputs by gut feel. Score them across task-specific dimensions — with evidence, not opinion.">
+  <meta property="og:title" content="LLM Eval Suite">
+  <meta property="og:description" content="Stop comparing LLM outputs by gut feel. Score them across task-specific dimensions — with evidence, not opinion.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080a0e; --bg2: #0d1017; --surface: #111520;
+      --border: #1e2535; --border2: #252d40;
+      --gold: #c9a84c; --gold-dim: #8a6f2e;
+      --cyan: #00c9b1; --cyan-dim: #007a6b; --red: #e05252;
+      --text: #dde2ee; --text-dim: #7a8399; --text-muted: #3d4560;
+      --mono: 'JetBrains Mono', monospace;
+      --display: 'Bebas Neue', sans-serif;
+      --serif: 'Crimson Pro', serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--serif);
+      font-size: 18px; line-height: 1.6; overflow-x: hidden; cursor: crosshair;
+    }
+
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 999; opacity: 0.4;
+    }
+
+    body::after {
+      content: ''; position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+      pointer-events: none; z-index: 998;
+    }
+
+    .cursor-glow {
+      position: fixed; width: 280px; height: 280px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,168,76,0.05) 0%, transparent 70%);
+      pointer-events: none; z-index: 997; transform: translate(-50%, -50%);
+    }
+
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 18px 48px; background: rgba(8,10,14,0.88);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--gold); letter-spacing: 3px; text-decoration: none; }
+    .nav-logo span { color: var(--text-muted); font-weight: 300; }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a { font-family: var(--mono); font-size: 11px; color: var(--text-dim); text-decoration: none; letter-spacing: 2px; text-transform: uppercase; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--gold); }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+    section { padding: 100px 0; }
+
+    .section-tag {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 4px;
+      text-transform: uppercase; color: var(--cyan);
+      display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    }
+    .section-tag::before { content: ''; width: 22px; height: 1px; background: var(--cyan); display: block; }
+
+    .section-header { margin-bottom: 56px; }
+    .section-title { font-family: var(--display); font-size: clamp(38px, 5vw, 54px); letter-spacing: 1px; color: var(--text); line-height: 1; }
+    .section-sub { font-family: var(--serif); font-size: 17px; color: var(--text-dim); margin-top: 14px; font-style: italic; max-width: 520px; }
+
+    .hero { min-height: 100vh; display: flex; align-items: center; padding-top: 74px; }
+    .hero-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center; width: 100%; }
+
+    .tool-badge {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
+      color: var(--cyan); margin-bottom: 28px; display: flex; align-items: center; gap: 12px;
+    }
+    .tool-badge::before { content: ''; width: 22px; height: 1px; background: var(--cyan); display: block; }
+
+    .hero-title { font-family: var(--display); font-size: clamp(56px, 8vw, 108px); line-height: 0.92; letter-spacing: 1px; color: var(--text); margin-bottom: 28px; }
+    .hero-title .accent { color: var(--gold); }
+    .hero-desc { font-family: var(--serif); font-size: 21px; font-style: italic; font-weight: 300; color: var(--text-dim); max-width: 480px; line-height: 1.55; margin-bottom: 36px; }
+
+    .btn-group { display: flex; gap: 14px; flex-wrap: wrap; }
+    .btn-primary {
+      font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--bg); background: var(--gold); padding: 13px 26px; text-decoration: none;
+      border: 1px solid var(--gold); transition: all 0.2s; display: inline-block; cursor: crosshair;
+    }
+    .btn-primary:hover { background: transparent; color: var(--gold); }
+    .btn-secondary {
+      font-family: var(--mono); font-size: 11px; font-weight: 400; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--text-dim); text-decoration: none; border: 1px solid var(--border2);
+      padding: 13px 26px; transition: all 0.2s; display: inline-block; cursor: crosshair;
+    }
+    .btn-secondary:hover { border-color: var(--text-dim); color: var(--text); }
+
+    .terminal { background: #0d1117; border: 1px solid #21262d; font-family: var(--mono); font-size: 12.5px; padding: 20px 24px; overflow-x: auto; }
+    .terminal-bar { display: flex; gap: 6px; margin-bottom: 18px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-r { background: #ff5f56; } .dot-y { background: #ffbd2e; } .dot-g { background: #27c93f; }
+    .terminal pre { color: var(--text-dim); line-height: 1.75; white-space: pre; }
+    .t-prompt { color: var(--cyan-dim); } .t-cmd { color: var(--text); } .t-flag { color: var(--gold); }
+    .t-val { color: #79c0ff; } .t-cmt { color: var(--text-muted); } .t-key { color: var(--gold); }
+    .t-str { color: #a8d8a8; } .t-sev { color: var(--red); } .t-head { color: var(--cyan); }
+    .t-dim { color: var(--text-dim); } .t-muted { color: var(--text-muted); } .t-pass { color: #27c93f; }
+
+    .full-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+    .problem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start; }
+    .problem-left .section-tag { margin-bottom: 28px; }
+    .problem-statement { font-family: var(--serif); font-size: 19px; font-style: italic; color: var(--text-dim); line-height: 1.75; font-weight: 300; }
+    .problem-solution { font-family: var(--serif); font-size: 17px; color: var(--text-dim); line-height: 1.75; font-weight: 300; margin-top: 48px; }
+
+    .arch-row { display: grid; grid-template-columns: repeat(4, 1fr); position: relative; }
+    .arch-row::before {
+      content: ''; position: absolute; top: 7px;
+      left: calc(12.5% + 8px); right: calc(12.5% + 8px);
+      height: 1px; background: linear-gradient(90deg, transparent, var(--border2) 10%, var(--border2) 90%, transparent);
+    }
+    .arch-step { padding: 0 20px 0 0; }
+    .arch-num { font-family: var(--mono); font-size: 10px; letter-spacing: 3px; color: var(--text-muted); margin-bottom: 22px; display: flex; align-items: center; gap: 10px; }
+    .arch-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+    .arch-label { font-family: var(--display); font-size: 22px; color: var(--text); margin-bottom: 10px; letter-spacing: 1px; }
+    .arch-desc { font-family: var(--serif); font-size: 15px; color: var(--text-dim); line-height: 1.55; }
+
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); }
+    .feat-card { background: var(--surface); padding: 28px 26px; transition: border-top 0.2s; border-top: 2px solid transparent; }
+    .feat-card:hover { border-top-color: var(--gold); }
+    .feat-title { font-family: var(--serif); font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
+    .feat-desc { font-family: var(--serif); font-size: 15px; font-weight: 300; color: var(--text-dim); line-height: 1.6; }
+
+    pre {
+      background: #0d1117; border: 1px solid #21262d; border-radius: 6px;
+      padding: 20px 24px; font-family: var(--mono); font-size: 12.5px;
+      line-height: 1.7; overflow-x: auto; color: #c9d1d9;
+    }
+    pre .kw { color: #ff7b72; } pre .fn { color: #d2a8ff; }
+    pre .str { color: #a5d6ff; } pre .cmt { color: #8b949e; font-style: italic; }
+    pre .prop { color: var(--gold); }
+
+    .qs-label { font-family: var(--mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; }
+    .qs-gap { margin-top: 28px; }
+
+    .example-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .ex-label { font-family: var(--mono); font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .ex-label span { color: var(--cyan); }
+
+    .suite-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--border); }
+    .suite-card { background: var(--surface); padding: 24px 20px; text-decoration: none; transition: background 0.2s; display: block; }
+    .suite-card:hover { background: var(--bg2); }
+    .suite-name { font-family: var(--mono); font-size: 11px; color: var(--gold); margin-bottom: 10px; letter-spacing: 0.5px; }
+    .suite-desc { font-family: var(--serif); font-size: 13.5px; color: var(--text-dim); line-height: 1.45; }
+
+    footer { border-top: 1px solid var(--border); padding: 26px 48px; display: flex; justify-content: space-between; align-items: center; }
+    .footer-left { font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--text-muted); }
+    .footer-right { font-family: var(--mono); font-size: 10px; color: var(--text-muted); }
+    .footer-right span { color: var(--gold); }
+
+    .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.65s ease, transform 0.65s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 768px) {
+      nav { padding: 16px 24px; }
+      .nav-links { display: none; }
+      .container { padding: 0 24px; }
+      section { padding: 64px 0; }
+      .hero { min-height: auto; padding: 100px 0 48px; }
+      .hero-inner { grid-template-columns: 1fr; gap: 44px; }
+      .hero-title { font-size: 52px; }
+      .hero-desc { font-size: 18px; }
+      .problem-grid { grid-template-columns: 1fr; gap: 32px; }
+      .problem-solution { margin-top: 0; }
+      .arch-row { grid-template-columns: 1fr 1fr; gap: 40px; }
+      .arch-row::before { display: none; }
+      .features-grid { grid-template-columns: 1fr; }
+      .example-grid { grid-template-columns: 1fr; }
+      .suite-grid { grid-template-columns: 1fr 1fr; }
+      footer { flex-direction: column; gap: 10px; text-align: center; padding: 20px 24px; }
+    }
+    @media (max-width: 480px) {
+      .arch-row { grid-template-columns: 1fr; }
+      .suite-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="cursor-glow" id="cursorGlow"></div>
+
+  <nav>
+    <a href="#" class="nav-logo">SS<span> / tools</span></a>
+    <div class="nav-links">
+      <a href="https://swapnanilsaha.com" target="_blank">Portfolio</a>
+      <a href="https://github.com/swapnanil" target="_blank">GitHub</a>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════ HERO ═══ -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-inner">
+        <div class="hero-left">
+          <div class="tool-badge">LLM · Evaluation · CI/CD</div>
+          <h1 class="hero-title">LLM Output<br><span class="accent">Eval</span></h1>
+          <p class="hero-desc">"Stop comparing LLM outputs by gut feel. Score them across task-specific dimensions — with evidence, not opinion."</p>
+          <div class="btn-group">
+            <a href="https://github.com/swapnanil/llm-eval-suite" target="_blank" class="btn-primary">View on GitHub</a>
+            <a href="https://github.com/swapnanil/llm-eval-suite#api-usage" target="_blank" class="btn-secondary">Read the Docs</a>
+          </div>
+        </div>
+
+        <div class="hero-right">
+          <div class="terminal">
+            <div class="terminal-bar">
+              <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+            </div>
+            <pre><span class="t-prompt">$</span> <span class="t-cmd">docker-compose run cli eval</span> \
+  <span class="t-flag">--file</span> <span class="t-val">examples/eval_qa.json</span> \
+  <span class="t-flag">--mode</span> <span class="t-val">compare</span> <span class="t-flag">--format</span> <span class="t-val">markdown</span>
+
+<span class="t-cmt"># Task type: qa · 2 responses</span>
+
+<span class="t-head">## Evaluation Result</span>
+<span class="t-key">winner</span><span class="t-muted">:</span>  <span class="t-pass">Response A</span>
+<span class="t-key">margin</span><span class="t-muted">:</span>  clear
+
+<span class="t-head">Response B — Faithfulness</span>
+<span class="t-key">score</span><span class="t-muted">:</span> <span class="t-sev">1.0 / 10</span>
+<span class="t-key">quote</span><span class="t-muted">:</span> <span class="t-str">"30-day return policy,
+        no questions asked"</span>
+<span class="t-key">issue</span><span class="t-muted">:</span> <span class="t-dim">Source says 14 days.
+</span><span class="t-dim">        Clear hallucination.</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="full-divider">
+
+  <!-- ═══════════════════════════════════ PROBLEM ═══ -->
+  <section>
+    <div class="container">
+      <div class="problem-grid reveal">
+        <div class="problem-left">
+          <div class="section-tag">Problem</div>
+          <p class="problem-statement">Teams switch between models, upgrade prompts, and change fine-tuning datasets — then decide which version is better by reading a few outputs and going with gut feel. There is no audit trail. No reproducible score. No way to gate a model upgrade in CI without it.</p>
+        </div>
+        <div class="problem-right">
+          <p class="problem-solution">LLM Eval Suite scores every response across task-specific dimensions with evidence — a quote from the response that drove each score. Run it in three modes: score independently, compare head-to-head, or rank multiple responses. Plug JUnit XML output into GitHub Actions and model upgrades either pass or fail like any other test.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="full-divider">
+
+  <!-- ═══════════════════════════════ ARCHITECTURE ═══ -->
+  <section>
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-tag">Architecture</div>
+        <h2 class="section-title">Evidence-backed.<br>CI-ready.</h2>
+        <p class="section-sub">Task type determines the dimension set. Every score is grounded in a quote from the response being evaluated.</p>
+      </div>
+      <div class="arch-row">
+        <div class="arch-step reveal">
+          <div class="arch-num"><div class="arch-dot"></div>01</div>
+          <div class="arch-label">Input</div>
+          <div class="arch-desc">Prompt, one or more LLM responses, task type, and optional source document for faithfulness scoring</div>
+        </div>
+        <div class="arch-step reveal">
+          <div class="arch-num"><div class="arch-dot"></div>02</div>
+          <div class="arch-label">Select</div>
+          <div class="arch-desc">Task type selects the calibrated dimension set — QA, summarisation, instruction following, or code generation</div>
+        </div>
+        <div class="arch-step reveal">
+          <div class="arch-num"><div class="arch-dot"></div>03</div>
+          <div class="arch-label">Judge</div>
+          <div class="arch-desc">Claude judges each dimension with a score, a quote from the response, and a specific reason for the rating</div>
+        </div>
+        <div class="arch-step reveal">
+          <div class="arch-num"><div class="arch-dot"></div>04</div>
+          <div class="arch-label">Output</div>
+          <div class="arch-desc">Scores, winner, ranking, recommendation — as Markdown, JSON, or JUnit XML for CI/CD integration</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="full-divider">
+
+  <!-- ════════════════════════════════ FEATURES ═══ -->
+  <section>
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-tag">Features</div>
+        <h2 class="section-title">Scores with<br>evidence.</h2>
+        <p class="section-sub">Every dimension score comes with a quote from the response that drove it — not "this is good" but specific textual evidence.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feat-card reveal">
+          <div class="feat-title">Three Eval Modes</div>
+          <div class="feat-desc">Score a single response independently, compare two responses head-to-head, or rank multiple responses in one call. All three modes share the same dimension set for the given task type.</div>
+        </div>
+        <div class="feat-card reveal">
+          <div class="feat-title">Task-Specific Dimensions</div>
+          <div class="feat-desc">Summarisation, QA, instruction following, and code generation each have calibrated dimension sets. A QA eval checks faithfulness and completeness; a code eval checks correctness and edge-case handling.</div>
+        </div>
+        <div class="feat-card reveal">
+          <div class="feat-title">Hallucination Detection</div>
+          <div class="feat-desc">Faithfulness scoring flags every claim not supported by the source document. No partial credit for "mostly faithful" — each unsupported claim is identified and quoted explicitly.</div>
+        </div>
+        <div class="feat-card reveal">
+          <div class="feat-title">Evidence-Based Scoring</div>
+          <div class="feat-desc">Every score includes a verbatim quote from the response that drove it. Not "this is well-structured" but the exact sentence that earned or cost points — reviewable and auditable.</div>
+        </div>
+        <div class="feat-card reveal">
+          <div class="feat-title">CI/CD Integration</div>
+          <div class="feat-desc">JUnit XML output plugs directly into GitHub Actions and Jenkins. Scores below a configurable threshold become test failures — model upgrades are gated the same way code changes are.</div>
+        </div>
+        <div class="feat-card reveal">
+          <div class="feat-title">Batch Eval</div>
+          <div class="feat-desc">Run an entire prompt library through evaluation in one command. Catches regressions after model upgrades, prompt rewrites, or fine-tuning changes before they reach production.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="full-divider">
+
+  <!-- ══════════════════════════════ QUICKSTART ═══ -->
+  <section>
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-tag">Quickstart</div>
+        <h2 class="section-title">Running in<br>three minutes.</h2>
+      </div>
+      <div class="reveal">
+        <div class="qs-label">Setup</div>
+        <pre><span class="kw">git</span> clone https://github.com/swapnanil/llm-eval-suite
+<span class="kw">cd</span> llm-eval-suite
+<span class="kw">cp</span> .env.example .env   <span class="cmt"># add your ANTHROPIC_API_KEY</span>
+docker-compose up api</pre>
+      </div>
+      <div class="qs-gap reveal">
+        <div class="qs-label">CLI — compare two responses</div>
+        <pre>docker-compose run cli eval \
+  --file examples/eval_qa.json \
+  --mode compare --format markdown</pre>
+      </div>
+      <div class="qs-gap reveal">
+        <div class="qs-label">GitHub Actions — gate model upgrades in CI</div>
+        <pre><span class="prop">- name:</span> <span class="str">Run LLM eval</span>
+  <span class="prop">run:</span> <span class="str">docker-compose run cli eval \
+    --file evals/suite.json \
+    --mode rank --format junit \
+    --output results.xml</span>
+<span class="prop">- uses:</span> <span class="str">mikepenz/action-junit-report@v3</span>
+  <span class="prop">with:</span>
+    <span class="prop">report_paths:</span> <span class="str">results.xml</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <hr class="full-divider">
+
+  <!-- ══════════════════════════════════ EXAMPLE ═══ -->
+  <section>
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-tag">Example</div>
+        <h2 class="section-title">Two responses in.<br>Clear winner out.</h2>
+      </div>
+      <div class="example-grid">
+        <div class="reveal">
+          <div class="ex-label">Input — <span>compare eval JSON</span></div>
+          <div class="terminal">
+            <pre style="font-size: 11px; line-height: 1.75; white-space: pre-wrap;"><span class="t-muted">{</span>
+  <span class="t-key">"task_type"</span><span class="t-muted">:</span> <span class="t-str">"qa"</span><span class="t-muted">,</span>
+  <span class="t-key">"eval_mode"</span><span class="t-muted">:</span> <span class="t-str">"compare"</span><span class="t-muted">,</span>
+  <span class="t-key">"source"</span><span class="t-muted">:</span>
+    <span class="t-str">"Refunds within 14
+     days if unused"</span><span class="t-muted">,</span>
+  <span class="t-key">"responses"</span><span class="t-muted">: [{</span>
+    <span class="t-val">"label"</span><span class="t-muted">:</span> <span class="t-str">"Response A"</span><span class="t-muted">,</span>
+    <span class="t-val">"text"</span><span class="t-muted">:</span>
+      <span class="t-str">"Refund in 14 days
+       if unused."</span>
+  <span class="t-muted">}, {</span>
+    <span class="t-val">"label"</span><span class="t-muted">:</span> <span class="t-str">"Response B"</span><span class="t-muted">,</span>
+    <span class="t-val">"text"</span><span class="t-muted">:</span>
+      <span class="t-str">"30-day return,
+       no questions asked."</span>
+  <span class="t-muted">}]</span>
+<span class="t-muted">}</span></pre>
+          </div>
+        </div>
+        <div class="reveal">
+          <div class="ex-label">Output — <span>evaluation result</span></div>
+          <div class="terminal">
+            <pre style="font-size: 11.5px; line-height: 1.7;"><span class="t-key">winner</span><span class="t-muted">:</span>  <span class="t-pass">Response A</span>
+<span class="t-key">margin</span><span class="t-muted">:</span>  clear
+
+<span class="t-head">Response B — Faithfulness</span>
+<span class="t-key">score</span><span class="t-muted">:</span>     <span class="t-sev">1.0 / 10</span>
+<span class="t-key">reasoning</span><span class="t-muted">:</span>
+  <span class="t-str">"States '30-day policy'
+   — source specifies 14
+   days. Clear hallucin-
+   ation."</span>
+<span class="t-key">quote</span><span class="t-muted">:</span>
+  <span class="t-sev">"30-day return policy,
+   no questions asked"</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="full-divider">
+
+  <!-- ══════════════════════════════════ SUITE ═══ -->
+  <section>
+    <div class="container">
+      <div class="section-header reveal">
+        <div class="section-tag">Suite</div>
+        <h2 class="section-title">Five more tools.<br>Same standard.</h2>
+        <p class="section-sub">Each tool is a standalone CLI + REST API solving a real enterprise problem with Claude.</p>
+      </div>
+      <div class="suite-grid">
+        <a href="https://swapnanil.github.io/ad-copy-critic/" target="_blank" class="suite-card reveal">
+          <div class="suite-name">ad-copy-critic</div>
+          <div class="suite-desc">Scores ad copy across 8 dimensions and generates rewrite variants</div>
+        </a>
+        <a href="https://swapnanil.github.io/campaign-health/" target="_blank" class="suite-card reveal">
+          <div class="suite-name">campaign-health</div>
+          <div class="suite-desc">Diagnoses ad campaign metrics with root causes and prioritised actions</div>
+        </a>
+        <a href="https://swapnanil.github.io/rag-readiness/" target="_blank" class="suite-card reveal">
+          <div class="suite-name">rag-readiness</div>
+          <div class="suite-desc">Recommends a complete RAG architecture for your data and use case</div>
+        </a>
+        <a href="https://swapnanil.github.io/ai-use-case-scoper/" target="_blank" class="suite-card reveal">
+          <div class="suite-name">ai-use-case-scoper</div>
+          <div class="suite-desc">Turns a vague AI ambition into a prioritised roadmap with a 90-day plan</div>
+        </a>
+        <a href="https://swapnanil.github.io/meeting-to-action/" target="_blank" class="suite-card reveal">
+          <div class="suite-name">meeting-to-action</div>
+          <div class="suite-desc">Extracts decisions, owners, and deadlines from any meeting transcript</div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-left">© 2026 Swapnanil Saha · swapnanilsaha.com</div>
+    <div class="footer-right">Part of the <span>llm-tools</span> suite</div>
+  </footer>
+
+  <script>
+    const glow = document.getElementById('cursorGlow');
+    document.addEventListener('mousemove', e => {
+      glow.style.left = e.clientX + 'px';
+      glow.style.top = e.clientY + 'px';
+    });
+
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((en, i) => {
+        if (en.isIntersecting) {
+          setTimeout(() => en.target.classList.add('visible'), i * 75);
+          obs.unobserve(en.target);
+        }
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+  </script>
+</body>
+</html>

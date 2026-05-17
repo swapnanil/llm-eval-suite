@@ -1,0 +1,10 @@
+# Disables Jekyll processing — serves raw HTML directly
+exclude:
+  - "*.py"
+  - "*.md"
+  - "requirements.txt"
+  - "Dockerfile"
+  - "docker-compose.yml"
+  - ".env*"
+  - "tests/"
+  - "agent/"
