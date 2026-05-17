@@ -1,0 +1,18 @@
+{
+  "prompt": "What is the refund policy for digital products?",
+  "task_type": "qa",
+  "source_document": "PixelPress Digital Store — Customer FAQ\n\nQ: What payment methods do you accept?\nA: We accept Visa, Mastercard, American Express, PayPal, and Apple Pay.\n\nQ: Can I get a refund on a physical product?\nA: Yes. Physical products can be returned within 30 days of delivery for a full refund, provided they are unused and in original packaging.\n\nQ: What is the refund policy for digital products?\nA: Digital products (software licences, ebooks, downloadable assets, and online courses) are eligible for a refund within 14 days of purchase, provided the digital content has not been downloaded or accessed more than once. Refund requests must be submitted via our support portal at support.pixelpress.com.\n\nQ: How long does a refund take to process?\nA: Refunds are typically processed within 5–7 business days after approval.\n\nQ: Do you offer student discounts?\nA: Yes. Students with a valid .edu email address receive 20% off all products.",
+  "eval_mode": "compare",
+  "responses": [
+    {
+      "label": "Response A",
+      "response": "According to PixelPress's refund policy, digital products — including software licences, ebooks, downloadable assets, and online courses — are eligible for a refund within **14 days of purchase**, provided the digital content has not been downloaded or accessed more than once. Refund requests must be submitted through the support portal at support.pixelpress.com.",
+      "model": "Claude Sonnet"
+    },
+    {
+      "label": "Response B",
+      "response": "PixelPress offers a 30-day refund policy on digital products. You can request a refund for any digital purchase within 30 days as long as you haven't used the product extensively. Contact their customer support team to initiate the refund process.",
+      "model": "GPT-4o"
+    }
+  ]
+}

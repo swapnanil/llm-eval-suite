@@ -1,0 +1,25 @@
+{
+  "prompt": "Write a Python function that takes a list of integers and returns the top-3 most frequent elements with their counts. Handle edge cases such as empty lists and lists with fewer than 3 unique elements.",
+  "task_type": "code_generation",
+  "eval_mode": "rank",
+  "responses": [
+    {
+      "label": "GPT-4o",
+      "response": "```python\nfrom collections import Counter\n\ndef top_3_frequent(nums: list[int]) -> list[tuple[int, int]]:\n    if not nums:\n        return []\n    counter = Counter(nums)\n    return counter.most_common(3)\n```",
+      "model": "GPT-4o",
+      "latency_ms": 820
+    },
+    {
+      "label": "Claude Sonnet",
+      "response": "```python\nfrom collections import Counter\n\ndef top_3_frequent(nums: list[int]) -> list[tuple[int, int]]:\n    \"\"\"Return the top-3 most frequent elements with their counts.\n\n    Args:\n        nums: List of integers to analyse.\n\n    Returns:\n        List of (element, count) tuples sorted by descending frequency,\n        containing at most 3 items. Returns an empty list for empty input.\n    \"\"\"\n    if not nums:\n        return []\n    return Counter(nums).most_common(3)\n```",
+      "model": "Claude Sonnet",
+      "latency_ms": 1100
+    },
+    {
+      "label": "Gemini Pro",
+      "response": "```python\ndef top_3_frequent(nums):\n    if len(nums) == 0:\n        return []\n    \n    frequency_dict = {}\n    for num in nums:\n        if num in frequency_dict:\n            frequency_dict[num] += 1\n        else:\n            frequency_dict[num] = 1\n    \n    sorted_items = sorted(frequency_dict.items(), key=lambda x: x[1], reverse=True)\n    \n    result = []\n    for i in range(min(3, len(sorted_items))):\n        result.append((sorted_items[i][0], sorted_items[i][1]))\n    \n    # Note: this function returns the top 3 items\n    # If there are ties in frequency the order may vary\n    return result\n```",
+      "model": "Gemini Pro",
+      "latency_ms": 950
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "task_type": "qa",
+  "eval_mode": "compare",
+  "timestamp": "2026-05-17T10:00:00+00:00",
+  "evaluations": [
+    {
+      "label": "Response A",
+      "overall_score": 9.2,
+      "dimensions": [
+        {
+          "dimension": "instruction_following",
+          "score": 9.5,
+          "reasoning": "Directly answers the exact question asked about digital product refund policy.",
+          "quote": "digital products — including software licences, ebooks, downloadable assets, and online courses — are eligible for a refund within 14 days of purchase"
+        },
+        {
+          "dimension": "coherence",
+          "score": 9.0,
+          "reasoning": "Well-structured, clear sentence flow with all relevant conditions stated logically.",
+          "quote": null
+        },
+        {
+          "dimension": "conciseness",
+          "score": 9.0,
+          "reasoning": "Includes all necessary details without padding.",
+          "quote": null
+        },
+        {
+          "dimension": "faithfulness",
+          "score": 10.0,
+          "reasoning": "Every claim is directly sourced from the FAQ. The 14-day window, product types, download condition, and support portal URL all match the source exactly.",
+          "quote": "support.pixelpress.com"
+        },
+        {
+          "dimension": "accuracy",
+          "score": 9.5,
+          "reasoning": "Correctly states 14-day policy with all qualifying conditions.",
+          "quote": null
+        },
+        {
+          "dimension": "appropriate_hedging",
+          "score": 9.0,
+          "reasoning": "States policy factually without overclaiming.",
+          "quote": null
+        }
+      ],
+      "strengths": [
+        "Perfectly faithful to the source document — no unsupported claims",
+        "Includes all qualifying conditions (download limit, submission process)"
+      ],
+      "weaknesses": [],
+      "one_line_verdict": "Accurate, complete, and fully faithful answer that quotes policy details precisely."
+    },
+    {
+      "label": "Response B",
+      "overall_score": 2.1,
+      "dimensions": [
+        {
+          "dimension": "instruction_following",
+          "score": 6.0,
+          "reasoning": "Addresses the question but provides critically wrong information.",
+          "quote": null
+        },
+        {
+          "dimension": "coherence",
+          "score": 7.0,
+          "reasoning": "Logically structured response.",
+          "quote": null
+        },
+        {
+          "dimension": "conciseness",
+          "score": 7.5,
+          "reasoning": "Appropriately brief.",
+          "quote": null
+        },
+        {
+          "dimension": "faithfulness",
+          "score": 1.0,
+          "reasoning": "States a 30-day refund policy for digital products. The source FAQ explicitly states 14 days. This is a clear hallucination — the 30-day figure applies to physical products only.",
+          "quote": "PixelPress offers a 30-day refund policy on digital products"
+        },
+        {
+          "dimension": "accuracy",
+          "score": 1.0,
+          "reasoning": "The core factual claim (30-day policy) is wrong. The correct policy is 14 days.",
+          "quote": null
+        },
+        {
+          "dimension": "appropriate_hedging",
+          "score": 2.0,
+          "reasoning": "States incorrect information with full confidence — no hedging on a hallucinated claim.",
+          "quote": null
+        }
+      ],
+      "strengths": [
+        "Well-structured response"
+      ],
+      "weaknesses": [
+        "Hallucinates a 30-day refund policy — the correct policy is 14 days for digital products",
+        "Confuses the physical product return window (30 days) with the digital product policy (14 days)",
+        "States incorrect support contact method — should reference support portal at support.pixelpress.com"
+      ],
+      "one_line_verdict": "Confidently states the wrong refund window — a critical hallucination that would misinform customers."
+    }
+  ],
+  "ranking": ["Response A", "Response B"],
+  "winner": "Response A",
+  "winner_reasoning": "Response A is the clear winner. It correctly states the 14-day refund window for digital products and includes all qualifying conditions. Response B hallucinates a 30-day policy — confusing the physical product window with the digital product window — and would actively mislead customers.",
+  "pairwise": [
+    {
+      "response_a": "Response A",
+      "response_b": "Response B",
+      "winner": "Response A",
+      "margin": "clear",
+      "reasoning": "Response B contains a critical hallucination — it states a '30-day refund policy on digital products' when the source FAQ explicitly states 14 days. Response A quotes the correct timeframe, conditions, and support portal. This is not a close comparison."
+    }
+  ],
+  "key_insight": "Response B's hallucinated 30-day policy (vs the correct 14 days) demonstrates how LLMs can confuse policy details for different product categories, producing confident, plausible-sounding but factually wrong answers.",
+  "recommendation": "Use Response A. For customer-facing FAQ bots, always ground responses with source-document retrieval and validate faithfulness scores before deployment.",
+  "efficiency_note": null
+}
