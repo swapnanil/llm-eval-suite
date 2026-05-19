@@ -15,6 +15,18 @@ For faithfulness specifically:
 Respond ONLY with valid JSON matching the output schema. No preamble, no markdown fences."""
 
 
+HALLUCINATION_SYSTEM_PROMPT = """You are a hallucination detection specialist for LLM outputs.
+Your job is to identify every claim in a response that is not directly supported by the provided source document.
+
+Principles:
+- CLAIM-LEVEL: Identify individual claims, not vague impressions. A claim is any specific fact, figure, name, date, or assertion.
+- BINARY: Each claim is either supported or unsupported. There is no "mostly supported."
+- SEVERITY: critical = directly contradicts the source; moderate = fabricated detail not in source; low = plausible but unverifiable inference.
+- QUOTE THE SOURCE: When a claim IS supported, quote the supporting text. When it is NOT, explain exactly what is missing.
+
+Respond ONLY with valid JSON matching the output schema. No preamble, no markdown fences."""
+
+
 DIMENSION_DESCRIPTIONS: dict[str, str] = {
     "instruction_following": "Did the response do what was asked? Evaluate whether all explicit and implicit instructions in the prompt were followed completely.",
     "coherence": "Is the response logically structured? Evaluate flow, clarity, and whether ideas connect naturally.",
@@ -33,6 +45,9 @@ DIMENSION_DESCRIPTIONS: dict[str, str] = {
     "originality": "Is the response creative and non-generic? Penalise formulaic, predictable, or template-like writing.",
     "engagement": "Is the writing compelling and interesting to read? Evaluate narrative pull, voice, and reader experience.",
     "tone_match": "Does the tone match what was requested in the prompt? Evaluate formality, register, and emotional tone.",
+    "answer_relevancy": "Is the answer directly relevant to the question asked? Penalise off-topic content or unnecessary context. RAGAS-compatible.",
+    "context_precision": "Of the retrieved context provided, how much is actually relevant to the question? High precision = no noise in the retrieved chunks. RAGAS-compatible.",
+    "context_recall": "Does the retrieved context contain all the information needed to fully answer the question? Low recall = answer is incomplete due to missing context. RAGAS-compatible.",
 }
 
 
@@ -101,6 +116,12 @@ TASK_DIMENSIONS: dict[str, dict[str, float]] = {
         "instruction_following": 0.35,
         "coherence": 0.35,
         "conciseness": 0.30,
+    },
+    "rag": {
+        "faithfulness": 0.25,
+        "answer_relevancy": 0.25,
+        "context_precision": 0.25,
+        "context_recall": 0.25,
     },
 }
 
@@ -255,5 +276,35 @@ def build_ranking_prompt(
 
     import json
     parts.append(f"\nRespond with JSON matching this exact schema (reorder ranking as you see fit):\n{json.dumps(schema, indent=2)}")
+    return "\n\n".join(parts)
 
+
+def build_hallucination_prompt(response_label: str, response_text: str, source: str) -> str:
+    import json as _json
+    parts = [
+        f"SOURCE DOCUMENT:\n{source}",
+        f"\nRESPONSE TO CHECK (label: {response_label}):\n{response_text}",
+        "\nIdentify every claim in the response. For each, determine if it is directly supported by the source document.",
+        "Return the risk_level as: 'none' (no unsupported claims), 'low' (1-2 minor inferences), "
+        "'moderate' (fabricated details present), 'high' (multiple unsupported claims), "
+        "'critical' (claims directly contradict the source).",
+        "Set safe_to_use to true only if risk_level is 'none' or 'low'.",
+        "hallucination_rate is the proportion of suspicious_claims where is_supported=false (0.0 if no claims found).",
+    ]
+    schema = {
+        "response_label": response_label,
+        "risk_level": "<none | low | moderate | high | critical>",
+        "hallucination_rate": "<float 0.0-1.0>",
+        "safe_to_use": "<boolean>",
+        "suspicious_claims": [
+            {
+                "claim": "<exact claim text from response>",
+                "severity": "<critical | moderate | low>",
+                "is_supported": "<boolean>",
+                "evidence_or_gap": "<supporting quote from source, or explanation of what is missing>",
+            }
+        ],
+        "summary": "<1-2 sentence overall assessment of hallucination risk>",
+    }
+    parts.append(f"\nRespond with JSON matching this exact schema:\n{_json.dumps(schema, indent=2)}")
     return "\n\n".join(parts)

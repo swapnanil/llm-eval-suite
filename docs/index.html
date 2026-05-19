@@ -208,9 +208,9 @@
     <div class="container">
       <div class="hero-inner">
         <div class="hero-left">
-          <div class="tool-badge">LLM · Evaluation · CI/CD</div>
+          <div class="tool-badge">LLM · Evaluation · Regression · CI/CD</div>
           <h1 class="hero-title">LLM Output<br><span class="accent">Eval</span></h1>
-          <p class="hero-desc">"Stop comparing LLM outputs by gut feel. Score them across task-specific dimensions — with evidence, not opinion."</p>
+          <p class="hero-desc">"Score every response with evidence. Catch regressions in CI. Detect hallucinations claim by claim. Know which prompt phrasings shift scores before you ship."</p>
           <div class="btn-group">
             <a href="https://github.com/swapnanil/llm-eval-suite" target="_blank" class="btn-primary">View on GitHub</a>
             <a href="https://github.com/swapnanil/llm-eval-suite#api-usage" target="_blank" class="btn-secondary">Read the Docs</a>
@@ -222,22 +222,21 @@
             <div class="terminal-bar">
               <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
             </div>
-            <pre><span class="t-prompt">$</span> <span class="t-cmd">docker-compose run cli eval</span> \
-  <span class="t-flag">--file</span> <span class="t-val">examples/eval_qa.json</span> \
-  <span class="t-flag">--mode</span> <span class="t-val">compare</span> <span class="t-flag">--format</span> <span class="t-val">markdown</span>
+            <pre><span class="t-prompt">$</span> <span class="t-cmd">docker-compose run cli regression run</span> \
+  <span class="t-val">eval_results.json</span> <span class="t-flag">--id</span> <span class="t-val">prod-v1</span>
 
-<span class="t-cmt"># Task type: qa · 2 responses</span>
+<span class="t-cmt"># Checking 4 dimensions vs baseline</span>
 
-<span class="t-head">## Evaluation Result</span>
-<span class="t-key">winner</span><span class="t-muted">:</span>  <span class="t-pass">Response A</span>
-<span class="t-key">margin</span><span class="t-muted">:</span>  clear
+<span class="t-head">Regression Result — FAILED</span>
+<span class="t-key">baseline</span><span class="t-muted">:</span>  prod-v1
+<span class="t-key">checks</span><span class="t-muted">:</span>   4 dimensions
+<span class="t-key">regressions</span><span class="t-muted">:</span>
+  <span class="t-sev">faithfulness</span><span class="t-muted">:</span> dropped <span class="t-sev">-1.20</span>
+  <span class="t-muted">(threshold 0.5)</span>
+<span class="t-key">improvements</span><span class="t-muted">:</span>
+  <span class="t-pass">coherence</span><span class="t-muted">: +</span><span class="t-pass">0.40</span>
 
-<span class="t-head">Response B — Faithfulness</span>
-<span class="t-key">score</span><span class="t-muted">:</span> <span class="t-sev">1.0 / 10</span>
-<span class="t-key">quote</span><span class="t-muted">:</span> <span class="t-str">"30-day return policy,
-        no questions asked"</span>
-<span class="t-key">issue</span><span class="t-muted">:</span> <span class="t-dim">Source says 14 days.
-</span><span class="t-dim">        Clear hallucination.</span></pre>
+<span class="t-cmt"># Exit code 1 — blocks merge in CI</span></pre>
           </div>
         </div>
       </div>
@@ -303,33 +302,33 @@
     <div class="container">
       <div class="section-header reveal">
         <div class="section-tag">Features</div>
-        <h2 class="section-title">Scores with<br>evidence.</h2>
-        <p class="section-sub">Every dimension score comes with a quote from the response that drove it — not "this is good" but specific textual evidence.</p>
+        <h2 class="section-title">Evidence.<br>Regression.<br>Consensus.</h2>
+        <p class="section-sub">Eight capabilities, each targeting a different failure mode in LLM evaluation — from gut-feel scoring to prompt fragility to judge bias.</p>
       </div>
       <div class="features-grid">
         <div class="feat-card reveal">
-          <div class="feat-title">Three Eval Modes</div>
-          <div class="feat-desc">Score a single response independently, compare two responses head-to-head, or rank multiple responses in one call. All three modes share the same dimension set for the given task type.</div>
+          <div class="feat-title">Multi-Dimensional Scoring</div>
+          <div class="feat-desc">Ten task presets — QA, summarisation, RAG, code generation, creative writing, and more. Each dimension score includes a verbatim quote from the response. Not "this is good" but specific textual evidence.</div>
         </div>
         <div class="feat-card reveal">
-          <div class="feat-title">Task-Specific Dimensions</div>
-          <div class="feat-desc">Summarisation, QA, instruction following, and code generation each have calibrated dimension sets. A QA eval checks faithfulness and completeness; a code eval checks correctness and edge-case handling.</div>
+          <div class="feat-title">Regression Testing</div>
+          <div class="feat-desc">Save any eval report as a named baseline. Run future evals against it — per-dimension deltas are compared against configurable thresholds. Exit code 1 in CI when scores drop below your floor.</div>
         </div>
         <div class="feat-card reveal">
           <div class="feat-title">Hallucination Detection</div>
-          <div class="feat-desc">Faithfulness scoring flags every claim not supported by the source document. No partial credit for "mostly faithful" — each unsupported claim is identified and quoted explicitly.</div>
+          <div class="feat-desc">Claim-level analysis against a source document. Each claim is either supported or unsupported — binary, not "mostly faithful." Risk levels: none, low, moderate, high, critical, with a safe_to_use flag for downstream gating.</div>
         </div>
         <div class="feat-card reveal">
-          <div class="feat-title">Evidence-Based Scoring</div>
-          <div class="feat-desc">Every score includes a verbatim quote from the response that drove it. Not "this is well-structured" but the exact sentence that earned or cost points — reviewable and auditable.</div>
+          <div class="feat-title">Prompt Sensitivity Analysis</div>
+          <div class="feat-desc">Test 2–5 prompt variants against a fixed response. Per-dimension variance tells you which dimensions are fragile and which are stable. Know which phrasings shift your scores before you deploy.</div>
         </div>
         <div class="feat-card reveal">
-          <div class="feat-title">CI/CD Integration</div>
-          <div class="feat-desc">JUnit XML output plugs directly into GitHub Actions and Jenkins. Scores below a configurable threshold become test failures — model upgrades are gated the same way code changes are.</div>
+          <div class="feat-title">Panel Evaluation</div>
+          <div class="feat-desc">Run N independent judge passes on the same eval. Mean and variance per dimension expose where judges agree and where they disagree. High-variance dimensions are flagged for human review automatically.</div>
         </div>
         <div class="feat-card reveal">
-          <div class="feat-title">Batch Eval</div>
-          <div class="feat-desc">Run an entire prompt library through evaluation in one command. Catches regressions after model upgrades, prompt rewrites, or fine-tuning changes before they reach production.</div>
+          <div class="feat-title">RAGAS-Compatible RAG Preset</div>
+          <div class="feat-desc">The rag task type maps faithfulness, answer relevancy, context precision, and context recall — the four RAGAS metrics — as first-class evaluation dimensions with equal weighting.</div>
         </div>
       </div>
     </div>
@@ -358,6 +357,16 @@ docker-compose up api</pre>
   --mode compare --format markdown</pre>
       </div>
       <div class="qs-gap reveal">
+        <div class="qs-label">CLI — hallucination detection</div>
+        <pre>docker-compose run cli hallucination \
+  --response output.txt --source source.txt --format markdown</pre>
+      </div>
+      <div class="qs-gap reveal">
+        <div class="qs-label">CLI — regression check vs saved baseline</div>
+        <pre>docker-compose run cli regression run results.json \
+  --id prod-baseline --format markdown</pre>
+      </div>
+      <div class="qs-gap reveal">
         <div class="qs-label">GitHub Actions — gate model upgrades in CI</div>
         <pre><span class="prop">- name:</span> <span class="str">Run LLM eval</span>
   <span class="prop">run:</span> <span class="str">docker-compose run cli eval \
@@ -366,7 +375,11 @@ docker-compose up api</pre>
     --output results.xml</span>
 <span class="prop">- uses:</span> <span class="str">mikepenz/action-junit-report@v3</span>
   <span class="prop">with:</span>
-    <span class="prop">report_paths:</span> <span class="str">results.xml</span></pre>
+    <span class="prop">report_paths:</span> <span class="str">results.xml</span>
+<span class="prop">- name:</span> <span class="str">Regression check</span>
+  <span class="prop">run:</span> <span class="str">docker-compose run cli regression run \
+    results.json --id prod-baseline</span>
+  <span class="cmt"># exits 1 if any dimension drops beyond threshold</span></pre>
       </div>
     </div>
   </section>

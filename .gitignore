@@ -1,5 +1,9 @@
 # Spec
 spec-llm-eval-suite.md
+spec-llm-eval-suite-v2.md
+
+# Regression baselines (local data, not committed)
+baselines/
 
 # Python
 __pycache__/

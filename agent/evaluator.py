@@ -8,10 +8,16 @@ from datetime import datetime, timezone
 
 import anthropic
 
+import statistics
+
 from .models import (
+    DimensionConsensus,
     DimensionEval,
     EvalInput,
     EvalReport,
+    JudgeScore,
+    PanelEvalReport,
+    ResponseConsensus,
     ResponseEval,
 )
 from .prompts import (
@@ -248,4 +254,105 @@ def evaluate(eval_input: EvalInput) -> EvalReport:
         key_insight=key_insight,
         recommendation=recommendation,
         efficiency_note=efficiency_note,
+    )
+
+
+_PANEL_DISAGREEMENT_THRESHOLD = 1.5
+
+
+def evaluate_with_panel(eval_input: EvalInput, num_judges: int = 3) -> PanelEvalReport:
+    if num_judges < 2 or num_judges > 5:
+        raise ValueError("num_judges must be between 2 and 5.")
+
+    if eval_input.dimensions:
+        custom_dims = eval_input.dimensions
+        default_dims = get_dimensions_for_task(eval_input.task_type)
+        if eval_input.weights:
+            dimensions = {d: eval_input.weights.get(d, default_dims.get(d, 0.1)) for d in custom_dims}
+        else:
+            total = len(custom_dims)
+            dimensions = {d: 1.0 / total for d in custom_dims}
+    else:
+        dimensions = get_dimensions_for_task(eval_input.task_type)
+        if eval_input.weights:
+            dimensions = {k: eval_input.weights.get(k, v) for k, v in dimensions.items()}
+
+    # For each response, collect num_judges independent scorings
+    # judge_scores[response_idx][judge_id] = ResponseEval
+    all_response_consensus: list[ResponseConsensus] = []
+
+    for resp_idx in range(len(eval_input.responses)):
+        label = eval_input.responses[resp_idx].label
+        logger.info(
+            "Panel scoring response '%s' with %d judges", label, num_judges
+        )
+
+        judge_evals: list[ResponseEval] = []
+        for j in range(num_judges):
+            ev = _score_single_response(eval_input, resp_idx, dimensions)
+            judge_evals.append(ev)
+
+        # Aggregate per dimension
+        all_dims = list(dimensions.keys())
+        dim_consensus_list: list[DimensionConsensus] = []
+
+        for dim in all_dims:
+            scores = [
+                next((d.score for d in ev.dimensions if d.dimension == dim), 5.0)
+                for ev in judge_evals
+            ]
+            mean_score = statistics.mean(scores)
+            variance = statistics.variance(scores) if len(scores) > 1 else 0.0
+            disagreement_flag = variance >= _PANEL_DISAGREEMENT_THRESHOLD
+            dim_consensus_list.append(DimensionConsensus(
+                dimension=dim,
+                mean_score=round(mean_score, 3),
+                variance=round(variance, 3),
+                disagreement_flag=disagreement_flag,
+            ))
+
+        consensus_score = round(statistics.mean(d.mean_score for d in dim_consensus_list), 3)
+        needs_review = any(d.disagreement_flag for d in dim_consensus_list)
+        reviewer_note = (
+            "High judge disagreement on: "
+            + ", ".join(d.dimension for d in dim_consensus_list if d.disagreement_flag)
+            if needs_review else None
+        )
+
+        all_response_consensus.append(ResponseConsensus(
+            label=label,
+            consensus_score=consensus_score,
+            dimension_consensus=dim_consensus_list,
+            needs_human_review=needs_review,
+            reviewer_note=reviewer_note,
+        ))
+
+    flagged = [rc.label for rc in all_response_consensus if rc.needs_human_review]
+    winner: str | None = None
+    panel_key_insight: str
+
+    if len(all_response_consensus) > 1:
+        best = max(all_response_consensus, key=lambda rc: rc.consensus_score)
+        winner = best.label
+        panel_key_insight = (
+            f"{winner} achieved the highest panel consensus score of {best.consensus_score:.2f}/10 "
+            f"across {num_judges} judges."
+        )
+    elif all_response_consensus:
+        panel_key_insight = (
+            f"Single response scored {all_response_consensus[0].consensus_score:.2f}/10 "
+            f"across {num_judges} judges."
+        )
+    else:
+        panel_key_insight = "No responses evaluated."
+
+    return PanelEvalReport(
+        num_judges=num_judges,
+        eval_mode=eval_input.eval_mode,
+        task_type=eval_input.task_type,
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        response_consensus=all_response_consensus,
+        winner=winner,
+        flagged_for_review=flagged,
+        panel_key_insight=panel_key_insight,
     )

@@ -16,8 +16,21 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from agent.comparator import attach_pairwise_to_report
-from agent.evaluator import evaluate
-from agent.models import BatchEvalSummary, EvalInput, EvalReport, LLMResponse
+from agent.evaluator import evaluate, evaluate_with_panel
+from agent.hallucination import detect_hallucinations
+from agent.regression import list_baselines, load_baseline, run_regression, save_baseline
+from agent.sensitivity import analyse_prompt_sensitivity
+from agent.models import (
+    BatchEvalSummary,
+    EvalInput,
+    EvalReport,
+    HallucinationReport,
+    LLMResponse,
+    PanelEvalReport,
+    PromptVariant,
+    RegressionResult,
+    SensitivityReport,
+)
 from agent.prompts import TASK_DIMENSIONS, DIMENSION_DESCRIPTIONS
 
 app = FastAPI(
@@ -119,6 +132,99 @@ def eval_batch(inputs: list[EvalInput]) -> BatchEvalSummary:
         reports=reports,
         aggregate_insights=insights,
     )
+
+
+class HallucinationRequest(BaseModel):
+    response_text: str
+    source: str
+    response_label: str = "response"
+
+
+@app.post("/hallucination", response_model=HallucinationReport)
+def hallucination_endpoint(req: HallucinationRequest) -> HallucinationReport:
+    try:
+        return detect_hallucinations(
+            response_text=req.response_text,
+            source=req.source,
+            response_label=req.response_label,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class SaveBaselineRequest(BaseModel):
+    report: EvalReport
+    baseline_id: str
+    description: str = ""
+
+
+@app.post("/regression/baselines")
+def save_baseline_endpoint(req: SaveBaselineRequest) -> dict:
+    try:
+        record = save_baseline(req.report, req.baseline_id, req.description)
+        return {"baseline_id": record.baseline_id, "created_at": record.created_at}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/regression/baselines")
+def list_baselines_endpoint() -> dict:
+    return {"baselines": list_baselines()}
+
+
+class RegressionRequest(BaseModel):
+    report: EvalReport
+    baseline_id: str
+    thresholds: dict[str, float] | None = None
+
+
+@app.post("/regression/run", response_model=RegressionResult)
+def regression_endpoint(req: RegressionRequest) -> RegressionResult:
+    try:
+        return run_regression(req.report, req.baseline_id, req.thresholds)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class SensitivityRequest(BaseModel):
+    prompts: list[PromptVariant]
+    fixed_response: str
+    task_type: str = "general"
+    fixed_response_label: str = "response"
+
+
+@app.post("/sensitivity", response_model=SensitivityReport)
+def sensitivity_endpoint(req: SensitivityRequest) -> SensitivityReport:
+    try:
+        return analyse_prompt_sensitivity(
+            prompts=req.prompts,
+            fixed_response=req.fixed_response,
+            task_type=req.task_type,
+            fixed_response_label=req.fixed_response_label,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class PanelRequest(BaseModel):
+    eval_input: EvalInput
+    num_judges: int = 3
+
+
+@app.post("/eval/panel", response_model=PanelEvalReport)
+def panel_endpoint(req: PanelRequest) -> PanelEvalReport:
+    try:
+        return evaluate_with_panel(req.eval_input, req.num_judges)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

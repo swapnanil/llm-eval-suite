@@ -19,7 +19,9 @@ logging.basicConfig(
 
 app = typer.Typer(help="LLM Output Eval Suite — evaluate and compare LLM responses.")
 eval_app = typer.Typer(help="Evaluation commands.")
+regression_app = typer.Typer(help="Regression testing commands.")
 app.add_typer(eval_app, name="eval")
+app.add_typer(regression_app, name="regression")
 
 
 # ---------------------------------------------------------------------------
@@ -316,6 +318,192 @@ def _run_batch(batch_dir: Path, mode: str, fmt: str, output: Optional[str]) -> N
         content = json.dumps([json.loads(r.model_dump_json()) for r in reports], indent=2)
     else:
         content = json.dumps([json.loads(r.model_dump_json()) for r in reports], indent=2)
+
+    _write_output(content, output)
+
+
+@app.command("hallucination")
+def hallucination_command(
+    response: str = typer.Option(..., "--response", "-r", help="Path to response text file"),
+    source: str = typer.Option(..., "--source", "-s", help="Path to source document file"),
+    label: str = typer.Option("response", "--label", "-l", help="Label for the response"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path (default: stdout)"),
+    fmt: str = typer.Option("json", "--format", help="Output format: json | markdown"),
+) -> None:
+    from agent.hallucination import detect_hallucinations
+
+    response_text = Path(response).read_text(encoding="utf-8")
+    source_text = Path(source).read_text(encoding="utf-8")
+
+    report = detect_hallucinations(response_text=response_text, source=source_text, response_label=label)
+
+    if fmt == "markdown":
+        lines = [
+            f"# Hallucination Report — {report.response_label}",
+            f"**Risk Level:** {report.risk_level}  |  **Hallucination Rate:** {report.hallucination_rate:.0%}  |  **Safe to Use:** {report.safe_to_use}",
+            "",
+            f"**Summary:** {report.summary}",
+            "",
+        ]
+        if report.suspicious_claims:
+            lines.append("## Suspicious Claims")
+            for c in report.suspicious_claims:
+                supported = "Supported" if c.is_supported else "Unsupported"
+                lines.append(f"- [{c.severity.upper()}] {c.claim} — {supported}. {c.evidence_or_gap}")
+        content = "\n".join(lines)
+    else:
+        content = report.model_dump_json(indent=2)
+
+    _write_output(content, output)
+
+
+@regression_app.command("save")
+def regression_save(
+    report_file: Path = typer.Argument(..., help="Path to EvalReport JSON"),
+    baseline_id: str = typer.Option(..., "--id", help="Baseline identifier"),
+    description: str = typer.Option("", "--description", "-d", help="Description of this baseline"),
+) -> None:
+    from agent.regression import save_baseline
+    from agent.models import EvalReport
+
+    data = json.loads(report_file.read_text())
+    report = EvalReport.model_validate(data)
+    record = save_baseline(report, baseline_id, description)
+    typer.echo(f"Baseline '{record.baseline_id}' saved at {record.created_at}")
+
+
+@regression_app.command("list")
+def regression_list() -> None:
+    from agent.regression import list_baselines
+    baselines = list_baselines()
+    if not baselines:
+        typer.echo("No baselines saved.")
+    else:
+        for b in baselines:
+            typer.echo(f"  - {b}")
+
+
+@regression_app.command("run")
+def regression_run(
+    report_file: Path = typer.Argument(..., help="Path to new EvalReport JSON"),
+    baseline_id: str = typer.Option(..., "--id", help="Baseline identifier to compare against"),
+    thresholds: Optional[str] = typer.Option(None, "--thresholds", help="JSON string of per-dimension thresholds"),
+    output: Optional[str] = typer.Option(None, "--output", "-o"),
+    fmt: str = typer.Option("json", "--format"),
+) -> None:
+    from agent.regression import run_regression
+    from agent.models import EvalReport
+
+    data = json.loads(report_file.read_text())
+    report = EvalReport.model_validate(data)
+    threshold_dict = json.loads(thresholds) if thresholds else None
+    result = run_regression(report, baseline_id, threshold_dict)
+
+    if fmt == "markdown":
+        status = "PASSED" if result.passed_overall else "FAILED"
+        lines = [
+            f"# Regression Result — {status}",
+            f"**Baseline:** {result.baseline_id}",
+            "",
+            result.summary,
+            "",
+            "| Dimension | Baseline | New | Delta | Passed |",
+            "|-----------|----------|-----|-------|--------|",
+        ]
+        for c in result.checks:
+            tick = "Yes" if c.passed else "No"
+            lines.append(f"| {c.dimension} | {c.baseline_score} | {c.new_score} | {c.delta:+.3f} | {tick} |")
+        if result.improvements:
+            lines.append("\n**Improvements:** " + "; ".join(result.improvements))
+        content = "\n".join(lines)
+    else:
+        content = result.model_dump_json(indent=2)
+
+    _write_output(content, output)
+    if not result.passed_overall:
+        raise typer.Exit(code=1)
+
+
+@app.command("sensitivity")
+def sensitivity_command(
+    prompts_file: Path = typer.Argument(..., help="JSON file with list of {label, prompt} objects"),
+    response_file: Path = typer.Argument(..., help="Path to the fixed response text file"),
+    task_type: str = typer.Option("general", "--task-type", "-t"),
+    output: Optional[str] = typer.Option(None, "--output", "-o"),
+    fmt: str = typer.Option("json", "--format"),
+) -> None:
+    from agent.sensitivity import analyse_prompt_sensitivity
+    from agent.models import PromptVariant
+
+    raw_prompts = json.loads(prompts_file.read_text())
+    variants = [PromptVariant.model_validate(p) for p in raw_prompts]
+    fixed_response = response_file.read_text(encoding="utf-8")
+
+    report = analyse_prompt_sensitivity(variants, fixed_response, task_type)
+
+    if fmt == "markdown":
+        lines = [
+            f"# Prompt Sensitivity Report",
+            f"**Recommended Prompt:** {report.recommended_prompt}",
+            f"**Stability:** {report.stability_summary}",
+            "",
+            "## Prompt Scores",
+            "| Prompt | Overall |",
+            "|--------|---------|",
+        ]
+        for ps in report.prompt_scores:
+            lines.append(f"| {ps.label} | {ps.overall_score:.2f} |")
+        lines.append("\n## Dimension Sensitivities")
+        lines.append("| Dimension | Mean | Variance | Sensitivity |")
+        lines.append("|-----------|------|----------|-------------|")
+        for d in report.dimension_sensitivities:
+            lines.append(f"| {d.dimension} | {d.mean_score} | {d.variance} | {d.sensitivity} |")
+        content = "\n".join(lines)
+    else:
+        content = report.model_dump_json(indent=2)
+
+    _write_output(content, output)
+
+
+@eval_app.command("panel")
+def panel_command(
+    file: Path = typer.Argument(..., help="Path to eval input JSON file"),
+    num_judges: int = typer.Option(3, "--judges", "-j", help="Number of judge iterations (2-5)"),
+    output: Optional[str] = typer.Option(None, "--output", "-o"),
+    fmt: str = typer.Option("json", "--format"),
+) -> None:
+    from agent.evaluator import evaluate_with_panel
+    from agent.models import EvalInput
+
+    raw = json.loads(file.read_text())
+    eval_input = EvalInput.model_validate(raw)
+    report = evaluate_with_panel(eval_input, num_judges)
+
+    if fmt == "markdown":
+        lines = [
+            f"# Panel Eval Report ({report.num_judges} judges)",
+            f"**Task:** {report.task_type}  |  **Mode:** {report.eval_mode}  |  **Timestamp:** {report.timestamp}",
+            "",
+        ]
+        if report.winner:
+            lines.append(f"**Winner:** {report.winner}")
+        lines.append(f"\n{report.panel_key_insight}")
+        lines.append("\n## Response Consensus Scores")
+        for rc in report.response_consensus:
+            flag = " [REVIEW NEEDED]" if rc.needs_human_review else ""
+            lines.append(f"\n### {rc.label} — {rc.consensus_score:.2f}/10{flag}")
+            if rc.reviewer_note:
+                lines.append(f"*{rc.reviewer_note}*")
+            lines.append("\n| Dimension | Mean | Variance | Disagreement |")
+            lines.append("|-----------|------|----------|--------------|")
+            for d in rc.dimension_consensus:
+                flag_mark = "YES" if d.disagreement_flag else "-"
+                lines.append(f"| {d.dimension} | {d.mean_score} | {d.variance} | {flag_mark} |")
+        if report.flagged_for_review:
+            lines.append(f"\n**Flagged for human review:** {', '.join(report.flagged_for_review)}")
+        content = "\n".join(lines)
+    else:
+        content = report.model_dump_json(indent=2)
 
     _write_output(content, output)
 
